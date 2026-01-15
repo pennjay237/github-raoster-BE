@@ -1,77 +1,87 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { GitHubService } from '../github/github.service';
-import { OpenAIService } from '../openai/openai.service';
-import { RoastResponse, RoastRequestData } from '../../shared/types/github.types';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { GithubService } from '../github/github.service'; // Changed from GitHubService
+import { GeminiService } from '../gemini/gemini.service';
 
 @Injectable()
 export class RoastService {
   private readonly logger = new Logger(RoastService.name);
 
   constructor(
-    private readonly githubService: GitHubService,
-    private readonly openaiService: OpenAIService,
+    private readonly githubService: GithubService, // Changed
+    private readonly geminiService: GeminiService,
   ) {}
 
   async generateRoast(
     username: string,
     temperature: number = 0.7,
-  ): Promise<RoastResponse> {
+    customInstructions?: string,
+  ): Promise<any> {
     this.logger.log(`Starting roast generation for ${username}`);
     
-    // 1. Fetch GitHub data
-    const githubData = await this.githubService.getUserData(username);
-    
-    // 2. Prepare roast data
-    const roastData = this.prepareRoastData(githubData);
-    
-    // 3. Generate roast with OpenAI
-    const roast = await this.openaiService.generateRoast(roastData, temperature);
-    
-    // 4. Construct response
-    return {
-      roast,
-      data: githubData,
-      metadata: {
-        generatedAt: new Date().toISOString(),
-        model: process.env.OPENAI_MODEL || 'gpt-3.5-turbo',
-        temperature,
-        disclaimer: 'This roast is AI-generated and intended for entertainment only. All jokes are in good fun and focus on coding habits, not personal attributes.',
-      },
-    };
+    try {
+      // 1. Fetch GitHub data
+      const githubData = await this.githubService.getUserData(username);
+      
+      // 2. Generate prompt for Gemini
+      const prompt = this.createRoastPrompt(githubData, temperature, customInstructions);
+      
+      // 3. Generate roast with Gemini
+      const roast = await this.geminiService.generateRoast(prompt);
+      
+      // 4. Construct response
+      return {
+        roast,
+        data: githubData,
+        metadata: {
+          generatedAt: new Date().toISOString(),
+          model: process.env.GEMINI_MODEL || 'gemini-pro',
+          temperature,
+          disclaimer: 'This roast is AI-generated and intended for entertainment only. All jokes are in good fun and focus on coding habits, not personal attributes.',
+        },
+      };
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      this.logger.error(`Roast generation failed for ${username}:`, error);
+      throw error;
+    }
   }
 
-  private prepareRoastData(data: any): RoastRequestData {
-    const now = new Date();
-    const sixMonthsAgo = new Date();
-    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-
-    return {
-      username: data.username,
-      name: data.name,
-      bio: data.bio,
-      publicRepos: data.publicRepos,
-      followers: data.followers,
-      following: data.following,
-      accountAge: data.accountAge,
-      accountYears: data.accountYears,
-      createdAt: data.createdAt,
-      recentRepos: data.recentRepos.map(repo => ({
-        name: repo.name,
-        description: repo.description,
-        language: repo.language,
-        stars: repo.stargazers_count,
-        forks: repo.forks_count,
-        updatedAt: repo.updated_at,
-        daysSinceUpdate: Math.floor(
-          (now.getTime() - new Date(repo.updated_at).getTime()) / (1000 * 60 * 60 * 24)
-        ),
-      })),
-      languages: data.languages,
-      totalStars: data.totalStars,
-      totalForks: data.totalForks,
-      mostUsedLanguage: data.mostUsedLanguage,
-      mostStarredRepo: data.mostStarredRepo,
-      repoActivity: data.repoActivity,
-    };
+  private createRoastPrompt(
+    data: any, 
+    temperature: number,
+    customInstructions?: string
+  ): string {
+    return `
+      Create a funny, lighthearted roast of a GitHub user based on their profile data.
+      
+      USER PROFILE:
+      - Username: ${data.username} (${data.name})
+      - Bio: ${data.bio}
+      - ${data.followers} followers, following ${data.following}
+      - ${data.publicRepos} public repositories
+      - GitHub member for ${data.accountYears} years
+      - Most used language: ${data.mostUsedLanguage}
+      - Most starred repo: ${data.mostStarredRepo}
+      - Repository activity: ${data.repoActivity}
+      ${customInstructions ? `- Custom instructions: ${customInstructions}` : ''}
+      
+      ROAST GUIDELINES:
+      1. Be humorous but respectful - no personal attacks
+      2. Focus on coding habits, commit patterns, and GitHub activity
+      3. Use programming jokes and developer humor
+      4. Keep it between 150-300 words
+      5. Never mention race, gender, age, or other personal attributes
+      6. End with a playful programming pun or encouragement
+      7. Make it specific to their GitHub stats
+      
+      Tone: Playful sarcasm, friendly teasing, witty observations
+      Creativity level: ${temperature} (0.1=conservative, 1.0=creative)
+      
+      Format: Start with "🔥 GitHub Roast of ${data.username} 🔥"
+      
+      IMPORTANT: The response should ONLY contain the roast text, no additional explanations.
+    `;
   }
 }

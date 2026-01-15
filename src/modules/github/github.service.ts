@@ -1,148 +1,155 @@
-import { Injectable, HttpException, HttpStatus, Logger } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import axios from 'axios';
-import { GitHubUser, GitHubRepo, GitHubData } from '../../shared/types/github.types';
-import * as dateUtils from '../../shared/utils/date.utils';
+import { HttpService } from '@nestjs/axios';
+import { catchError, firstValueFrom } from 'rxjs';
+import { AxiosError } from 'axios';
 
 @Injectable()
-export class GitHubService {
-  private readonly logger = new Logger(GitHubService.name);
-  private readonly githubApi = 'https://api.github.com';
-  
-  constructor(private readonly configService: ConfigService) {}
+export class GithubService {
+  private readonly logger = new Logger(GithubService.name);
+  private readonly githubToken: string;
+  private readonly githubApiUrl: string;
 
-  async getUserData(username: string): Promise<GitHubData> {
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly httpService: HttpService,
+  ) {
+    this.githubToken = this.configService.get<string>('GITHUB_TOKEN', '');
+    this.githubApiUrl = this.configService.get<string>('GITHUB_API_URL', 'https://api.github.com');
+  }
+
+  async getUserData(username: string): Promise<any> {
+    this.logger.log(`Fetching GitHub data for: ${username}`);
+    
     try {
-      this.logger.log(`Fetching GitHub data for user: ${username}`);
-      
-      const [userResponse, reposResponse] = await Promise.all([
-        this.fetchGitHubUser(username),
-        this.fetchUserRepositories(username),
-      ]);
-
-      const user = userResponse.data;
-      const repos = reposResponse.data;
-
-      return this.transformGitHubData(user, repos);
-    } catch (error) {
-      this.logger.error(`Failed to fetch GitHub data: ${error.message}`);
-      
-      if (error.response?.status === 404) {
-        throw new HttpException(
-          `GitHub user "${username}" not found`,
-          HttpStatus.NOT_FOUND,
-        );
-      }
-      
-      if (error.response?.status === 403) {
-        throw new HttpException(
-          'GitHub API rate limit exceeded. Please try again later.',
-          HttpStatus.TOO_MANY_REQUESTS,
-        );
-      }
-      
-      throw new HttpException(
-        'Failed to fetch GitHub data. Please try again later.',
-        HttpStatus.INTERNAL_SERVER_ERROR,
+      // Fetch user data
+      const userResponse = await firstValueFrom(
+        this.httpService.get(`${this.githubApiUrl}/users/${username}`, {
+          headers: this.getHeaders(),
+        }).pipe(
+          catchError((error: AxiosError) => {
+            if (error.response?.status === 404) {
+              throw new NotFoundException(`GitHub user '${username}' not found`);
+            }
+            throw error;
+          }),
+        ),
       );
+
+      // Fetch user repos
+      const reposResponse = await firstValueFrom(
+        this.httpService.get(`${this.githubApiUrl}/users/${username}/repos`, {
+          headers: this.getHeaders(),
+          params: {
+            sort: 'updated',
+            direction: 'desc',
+            per_page: 10,
+          },
+        }),
+      );
+
+      const userData = userResponse.data;
+      const reposData = reposResponse.data;
+
+      // Process data
+      return this.processGithubData(userData, reposData);
+    } catch (error) {
+      this.logger.error(`Failed to fetch GitHub data for ${username}:`, error);
+      throw error;
     }
   }
 
-  private async fetchGitHubUser(username: string) {
-    return axios.get<GitHubUser>(`${this.githubApi}/users/${username}`, {
-      headers: this.getHeaders(),
-      timeout: 10000,
-    });
-  }
-
-  private async fetchUserRepositories(username: string) {
-    return axios.get<GitHubRepo[]>(`${this.githubApi}/users/${username}/repos`, {
-      params: {
-        sort: 'updated',
-        direction: 'desc',
-        per_page: 10,
-        page: 1,
-      },
-      headers: this.getHeaders(),
-      timeout: 15000,
-    });
-  }
-
   private getHeaders() {
-    return {
+    const headers: Record<string, string> = {
       'Accept': 'application/vnd.github.v3+json',
-      'User-Agent': 'GitHub-Roast-AI/1.0.0',
-      'Authorization': process.env.GITHUB_TOKEN ? `token ${process.env.GITHUB_TOKEN}` : undefined,
+      'User-Agent': 'GitHub-Roast-AI-App',
     };
+
+    if (this.githubToken) {
+      headers['Authorization'] = `token ${this.githubToken}`;
+    }
+
+    return headers;
   }
 
-  private transformGitHubData(user: GitHubUser, repos: GitHubRepo[]): GitHubData {
-    const accountAge = dateUtils.calculateAccountAge(user.created_at);
-    const accountYears = dateUtils.calculateYearsSince(user.created_at);
-    
+  private processGithubData(userData: any, reposData: any[]): any {
+    // Calculate account years
+    const createdAt = new Date(userData.created_at);
+    const now = new Date();
+    const accountYears = Math.floor(
+      (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24 * 365.25),
+    );
+
     // Analyze languages
     const languages: Record<string, number> = {};
-    const recentRepos = repos.slice(0, 5);
-    
-    repos.forEach(repo => {
+    let totalStars = 0;
+    let totalForks = 0;
+
+    reposData.forEach(repo => {
       if (repo.language) {
         languages[repo.language] = (languages[repo.language] || 0) + 1;
       }
+      totalStars += repo.stargazers_count || 0;
+      totalForks += repo.forks_count || 0;
     });
 
-    // Calculate totals
-    const totalStars = repos.reduce((sum, repo) => sum + repo.stargazers_count, 0);
-    const totalForks = repos.reduce((sum, repo) => sum + repo.forks_count, 0);
-    
     // Find most used language
-    const mostUsedLanguage = Object.keys(languages).reduce((a, b) => 
-      languages[a] > languages[b] ? a : b, null
-    );
-    
+    let mostUsedLanguage = 'Unknown';
+    if (Object.keys(languages).length > 0) {
+      mostUsedLanguage = Object.keys(languages).reduce((a, b) => 
+        languages[a] > languages[b] ? a : b, 
+        Object.keys(languages)[0]
+      );
+    }
+
     // Find most starred repo
-    const mostStarredRepo = repos.length > 0 
-      ? repos.reduce((max, repo) => 
-          repo.stargazers_count > max.stars 
-            ? { name: repo.name, stars: repo.stargazers_count }
-            : max, 
-          { name: repos[0].name, stars: repos[0].stargazers_count }
-        )
-      : null;
-    
-    // Calculate repo activity (updated in last 6 months)
-    const sixMonthsAgo = new Date();
-    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-    
-    const activeRepos = repos.filter(repo => 
-      new Date(repo.updated_at) > sixMonthsAgo
-    ).length;
-    
-    const repoActivity = {
-      active: activeRepos,
-      inactive: repos.length - activeRepos,
-    };
+    let mostStarredRepoName = 'None';
+    if (reposData.length > 0) {
+      const mostStarredRepo = reposData.reduce((a, b) => 
+        (a.stargazers_count || 0) > (b.stargazers_count || 0) ? a : b,
+        reposData[0]
+      );
+      mostStarredRepoName = mostStarredRepo.name;
+    }
 
     return {
-      username: user.login,
-      name: user.name,
-      bio: user.bio,
-      avatarUrl: user.avatar_url,
-      profileUrl: user.html_url,
-      publicRepos: user.public_repos,
-      publicGists: user.public_gists,
-      followers: user.followers,
-      following: user.following,
-      accountAge,
+      username: userData.login,
+      name: userData.name || userData.login,
+      bio: userData.bio || 'No bio available',
+      publicRepos: userData.public_repos || 0,
+      followers: userData.followers || 0,
+      following: userData.following || 0,
+      createdAt: userData.created_at,
       accountYears,
-      createdAt: user.created_at,
-      updatedAt: user.updated_at,
-      recentRepos,
+      recentRepos: reposData.slice(0, 5).map(repo => ({
+        name: repo.name,
+        description: repo.description,
+        language: repo.language,
+        stars: repo.stargazers_count || 0,
+        forks: repo.forks_count || 0,
+        updatedAt: repo.updated_at,
+      })),
       languages,
       totalStars,
       totalForks,
       mostUsedLanguage,
-      mostStarredRepo,
-      repoActivity,
+      mostStarredRepo: mostStarredRepoName,
+      repoActivity: this.determineRepoActivity(reposData),
     };
+  }
+
+  private determineRepoActivity(reposData: any[]): string {
+    if (!reposData || reposData.length === 0) return 'inactive';
+    
+    const now = new Date();
+    const lastUpdate = new Date(reposData[0]?.updated_at || now);
+    const daysSinceUpdate = Math.floor(
+      (now.getTime() - lastUpdate.getTime()) / (1000 * 60 * 60 * 24),
+    );
+    
+    if (daysSinceUpdate < 7) return 'very active';
+    if (daysSinceUpdate < 30) return 'active';
+    if (daysSinceUpdate < 90) return 'somewhat active';
+    return 'inactive';
   }
 }

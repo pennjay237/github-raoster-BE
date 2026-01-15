@@ -4,13 +4,13 @@ import { ConfigService } from '@nestjs/config';
 export const corsMiddleware = (configService: ConfigService) => {
   return (req: Request, res: Response, next: NextFunction) => {
     const allowedOrigins = [
-      configService.get<string>('app.frontendUrl', 'http://localhost:3000'),
+      configService.get<string>('FRONTEND_URL', 'http://localhost:3000'),
       'http://localhost:3000',
       'https://localhost:3000',
     ];
 
-    const origin = req.headers.origin;
-    if (allowedOrigins.includes(origin)) {
+    const origin = req.headers.origin as string;
+    if (origin && allowedOrigins.includes(origin)) {
       res.header('Access-Control-Allow-Origin', origin);
     }
 
