@@ -1,5 +1,5 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { GithubService } from '../github/github.service'; // Changed from GitHubService
+import { GithubService } from '../github/github.service';
 import { GeminiService } from '../gemini/gemini.service';
 
 @Injectable()
@@ -7,7 +7,7 @@ export class RoastService {
   private readonly logger = new Logger(RoastService.name);
 
   constructor(
-    private readonly githubService: GithubService, // Changed
+    private readonly githubService: GithubService, 
     private readonly geminiService: GeminiService,
   ) {}
 
@@ -19,16 +19,12 @@ export class RoastService {
     this.logger.log(`Starting roast generation for ${username}`);
     
     try {
-      // 1. Fetch GitHub data
       const githubData = await this.githubService.getUserData(username);
       
-      // 2. Generate prompt for Gemini
       const prompt = this.createRoastPrompt(githubData, temperature, customInstructions);
       
-      // 3. Generate roast with Gemini
       const roast = await this.geminiService.generateRoast(prompt);
       
-      // 4. Construct response
       return {
         roast,
         data: githubData,

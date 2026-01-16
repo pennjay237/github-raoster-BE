@@ -17,7 +17,7 @@ import { GeminiModule } from './modules/gemini/gemini.module';
       isGlobal: true,
       load: [appConfig, geminiConfig],
     }),
-    HttpModule.register({ // ADD THIS
+    HttpModule.register({ 
       timeout: 5000,
       maxRedirects: 5,
     }),

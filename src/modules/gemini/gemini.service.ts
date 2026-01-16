@@ -21,7 +21,6 @@ export class GeminiService {
 
   async generateRoast(prompt: string): Promise<string> {
     try {
-      // If no API key, return mock response for development
       if (!this.apiKey) {
         this.logger.warn('Using mock Gemini response (no API key)');
         return this.getMockRoast();
@@ -84,7 +83,6 @@ export class GeminiService {
     } catch (error: any) {
       this.logger.error(`Gemini API error for model ${this.model}:`, error.response?.data || error.message);
       
-      // Try fallback model
       return this.tryFallbackModels(prompt);
     }
   }

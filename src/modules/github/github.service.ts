@@ -22,18 +22,16 @@ export class GithubService {
     this.logger.log(`Fetching GitHub data for: ${username}`);
     
     try {
-      // Fetch user data with timeout
       const userResponse = await firstValueFrom(
         this.httpService.get(`${this.githubApiUrl}/users/${username}`, {
           headers: this.getHeaders(),
         }).pipe(
-          timeout(10000), // 10 second timeout
+          timeout(10000), 
           catchError((error: AxiosError) => {
             if (error.response?.status === 404) {
               throw new NotFoundException(`GitHub user '${username}' not found`);
             }
             
-            // Check for timeout
             if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
               this.logger.warn(`GitHub API timeout for user ${username}, returning mock data`);
               throw new Error('TIMEOUT');
@@ -44,7 +42,6 @@ export class GithubService {
         ),
       );
 
-      // Fetch user repos with timeout
       const reposResponse = await firstValueFrom(
         this.httpService.get(`${this.githubApiUrl}/users/${username}/repos`, {
           headers: this.getHeaders(),
@@ -54,11 +51,9 @@ export class GithubService {
             per_page: 10,
           },
         }).pipe(
-          timeout(10000), // 10 second timeout
+          timeout(10000), 
           catchError((error: AxiosError) => {
-            // For repos, we can continue with empty repos array
             this.logger.warn(`Failed to fetch repos for ${username}, using empty repos`);
-            // Return mock empty repos
             return [{ data: [] }];
           }),
         ),
@@ -67,23 +62,19 @@ export class GithubService {
       const userData = userResponse.data;
       const reposData = reposResponse.data || [];
 
-      // Process data
       return this.processGithubData(userData, reposData);
     } catch (error: any) {
-      // If timeout, return mock data
       if (error.message === 'TIMEOUT' || error.code === 'ECONNABORTED') {
         this.logger.warn(`GitHub API timeout for ${username}, returning mock data`);
         return this.getMockGithubData(username);
       }
       
-      // If not found, rethrow
       if (error instanceof NotFoundException) {
         throw error;
       }
       
       this.logger.error(`Failed to fetch GitHub data for ${username}:`, error.message || error);
       
-      // Return mock data for any other error
       return this.getMockGithubData(username);
     }
   }
@@ -142,14 +133,12 @@ export class GithubService {
   }
 
   private processGithubData(userData: any, reposData: any[]): any {
-    // Calculate account years
     const createdAt = new Date(userData.created_at);
     const now = new Date();
     const accountYears = Math.floor(
       (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24 * 365.25),
     );
 
-    // Analyze languages
     const languages: Record<string, number> = {};
     let totalStars = 0;
     let totalForks = 0;
@@ -162,7 +151,6 @@ export class GithubService {
       totalForks += repo.forks_count || 0;
     });
 
-    // Find most used language
     let mostUsedLanguage = 'Unknown';
     if (Object.keys(languages).length > 0) {
       mostUsedLanguage = Object.keys(languages).reduce((a, b) => 
@@ -171,7 +159,6 @@ export class GithubService {
       );
     }
 
-    // Find most starred repo
     let mostStarredRepoName = 'None';
     if (reposData.length > 0) {
       const mostStarredRepo = reposData.reduce((a, b) => 
