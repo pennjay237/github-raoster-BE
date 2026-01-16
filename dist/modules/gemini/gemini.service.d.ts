@@ -8,5 +8,5 @@ export declare class GeminiService {
     constructor(configService: ConfigService);
     generateRoast(prompt: string): Promise<string>;
     private tryFallbackModels;
-    private getMockRoast;
+    private getRandomMockRoast;
 }
