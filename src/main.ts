@@ -1,37 +1,12 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
-import * as dotenv from 'dotenv';
-import * as path from 'path';
-import * as fs from 'fs';
-
-console.log('Current directory:', process.cwd());
-console.log('__dirname:', __dirname);
-
-const envPaths = [
-  path.resolve(process.cwd(), '.env'),
-  path.resolve(__dirname, '..', '..', '.env'),
-  path.resolve(__dirname, '.env'),
-];
-
-for (const envPath of envPaths) {
-  console.log(`Checking env file: ${envPath}`);
-  if (fs.existsSync(envPath)) {
-    console.log(`✅ Found .env at: ${envPath}`);
-    dotenv.config({ path: envPath });
-    break;
-  }
-}
-
-console.log('PORT:', process.env.PORT);
-console.log('GEMINI_API_KEY exists:', !!process.env.GEMINI_API_KEY);
-console.log('GEMINI_API_KEY first 10 chars:', process.env.GEMINI_API_KEY?.substring(0, 10) + '...');
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   
   app.enableCors({
-    origin: 'http://localhost:3000',
+    origin: ['http://localhost:3000', 'https://your-frontend-domain.com'],
     credentials: true,
   });
   
@@ -42,10 +17,11 @@ async function bootstrap() {
     }),
   );
   
+  app.setGlobalPrefix('api');
+  
   const port = process.env.PORT || 3001;
   await app.listen(port);
-  console.log(`🚀 Backend server running on http://localhost:${port}`);
-  console.log(`🔑 GEMINI_API_KEY loaded: ${process.env.GEMINI_API_KEY ? 'YES' : 'NO'}`);
+  console.log(`🚀 Backend server running on port ${port}`);
 }
 
 bootstrap();

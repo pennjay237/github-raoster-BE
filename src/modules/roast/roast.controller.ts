@@ -21,12 +21,11 @@ export class RoastController {
   @Post()
   @HttpCode(HttpStatus.OK)
   async createRoast(@Body() createRoastDto: CreateRoastDto) {
-    this.logger.log(`Received roast request for: ${createRoastDto.username}`);
+    this.logger.log(`POST roast request for: ${createRoastDto.username} with temperature: ${createRoastDto.temperature}`);
     
     const result = await this.roastService.generateRoast(
       createRoastDto.username,
       createRoastDto.temperature,
-      createRoastDto.customInstructions,
     );
     
     this.logger.log(`Successfully generated roast for: ${createRoastDto.username}`);
@@ -37,14 +36,12 @@ export class RoastController {
   async getRoast(
     @Param('username') username: string,
     @Query('temperature') temperature: number = 0.7,
-    @Query('customInstructions') customInstructions?: string,
   ) {
-    this.logger.log(`GET roast request for: ${username}`);
+    this.logger.log(`GET roast request for: ${username} with temperature: ${temperature}`);
     
     return this.roastService.generateRoast(
       username,
       temperature,
-      customInstructions,
     );
   }
 }
