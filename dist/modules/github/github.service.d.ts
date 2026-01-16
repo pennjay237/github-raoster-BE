@@ -9,6 +9,7 @@ export declare class GithubService {
     constructor(configService: ConfigService, httpService: HttpService);
     getUserData(username: string): Promise<any>;
     private getHeaders;
+    private getMockGithubData;
     private processGithubData;
     private determineRepoActivity;
 }

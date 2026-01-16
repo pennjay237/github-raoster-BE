@@ -4,7 +4,9 @@ export declare class GeminiService {
     private readonly logger;
     private readonly apiKey;
     private readonly baseUrl;
+    private readonly model;
     constructor(configService: ConfigService);
     generateRoast(prompt: string): Promise<string>;
+    private tryFallbackModels;
     private getMockRoast;
 }

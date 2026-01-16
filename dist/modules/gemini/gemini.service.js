@@ -20,7 +20,8 @@ let GeminiService = GeminiService_1 = class GeminiService {
         this.logger = new common_1.Logger(GeminiService_1.name);
         this.apiKey = this.configService.get('GEMINI_API_KEY') || '';
         this.baseUrl = this.configService.get('GEMINI_API_URL', 'https://generativelanguage.googleapis.com/v1beta');
-        if (!this.apiKey && process.env.NODE_ENV === 'development') {
+        this.model = this.configService.get('GEMINI_MODEL', 'gemini-1.5-flash-latest');
+        if (!this.apiKey) {
             this.logger.warn('GEMINI_API_KEY is not configured. Mock mode enabled.');
         }
     }
@@ -30,9 +31,8 @@ let GeminiService = GeminiService_1 = class GeminiService {
                 this.logger.warn('Using mock Gemini response (no API key)');
                 return this.getMockRoast();
             }
-            this.logger.log('Calling Gemini API...');
-            const model = this.configService.get('GEMINI_MODEL', 'gemini-pro');
-            const url = `${this.baseUrl}/models/${model}:generateContent?key=${this.apiKey}`;
+            this.logger.log(`Calling Gemini API with model: ${this.model}...`);
+            const url = `${this.baseUrl}/models/${this.model}:generateContent?key=${this.apiKey}`;
             const response = await axios_1.default.post(url, {
                 contents: [
                     {
@@ -72,32 +72,64 @@ let GeminiService = GeminiService_1 = class GeminiService {
             const roast = response.data?.candidates?.[0]?.content?.parts?.[0]?.text;
             if (!roast) {
                 this.logger.warn('Gemini returned empty response');
-                return 'Even the AI couldn\'t find anything to roast about this perfect developer! 🌟';
+                return this.getMockRoast();
             }
             this.logger.log('Roast generated successfully');
             return roast;
         }
         catch (error) {
-            this.logger.error('Gemini API error:', error.response?.data || error.message);
-            if (error.response?.data) {
-                console.error('Gemini API Error Details:', error.response.data);
-            }
-            this.logger.warn('Falling back to mock response');
-            return this.getMockRoast();
+            this.logger.error(`Gemini API error for model ${this.model}:`, error.response?.data || error.message);
+            return this.tryFallbackModels(prompt);
         }
     }
+    async tryFallbackModels(prompt) {
+        const fallbackModels = [
+            'gemini-1.5-flash-latest',
+            'gemini-1.5-pro-latest',
+            'gemini-1.0-pro-latest',
+            'gemini-pro',
+        ];
+        for (const model of fallbackModels) {
+            try {
+                this.logger.log(`Trying fallback model: ${model}`);
+                const url = `${this.baseUrl}/models/${model}:generateContent?key=${this.apiKey}`;
+                const response = await axios_1.default.post(url, {
+                    contents: [{ parts: [{ text: prompt }] }],
+                    generationConfig: {
+                        temperature: 0.7,
+                        topP: 0.8,
+                        topK: 40,
+                        maxOutputTokens: 500,
+                    },
+                }, {
+                    headers: { 'Content-Type': 'application/json' },
+                    timeout: 10000,
+                });
+                const roast = response.data?.candidates?.[0]?.content?.parts?.[0]?.text;
+                if (roast) {
+                    this.logger.log(`Success with model: ${model}`);
+                    return roast;
+                }
+            }
+            catch (error) {
+                this.logger.warn(`Model ${model} failed: ${error.message}`);
+            }
+        }
+        this.logger.warn('All Gemini models failed, using mock response');
+        return this.getMockRoast();
+    }
     getMockRoast() {
-        return `🔥 GitHub Roast of User 🔥
+        return `🔥 GitHub Roast 🔥
 
-Well well well, look who we have here! Another GitHub user trying to make their mark in the digital world. 
+Well well well, look who we have here! Another GitHub warrior braving the digital frontier. 
 
-I see you've been on GitHub for a while, but your commit history looks more sporadic than my attempts at New Year's resolutions. Your most used language? Probably "procrastination" if we're being honest!
+I see you've been committing code like it's going out of style... or maybe not enough? Either way, those repositories are looking mighty fine!
 
-But hey, at least you're trying! Those repositories may not have many stars, but they're perfect for... well, for being repositories. And that bio? "Passionate developer" - how original! 
+Your most used language? Let me guess... JavaScript, because who doesn't love a good callback hell? Or maybe Python, because indentation is life!
 
-Remember: every great developer starts with a "Hello World" and a lot of confusion. Keep pushing those commits, even if they're just fixing typos in your README!
+But seriously, keep up the good work! Every commit counts, even if it's just fixing that one typo you've been ignoring for months.
 
-💻 Keep coding, you digital wizard!`;
+💻 Stay awesome, you coding legend!`;
     }
 };
 exports.GeminiService = GeminiService;
