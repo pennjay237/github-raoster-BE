@@ -23,14 +23,14 @@ let RoastController = RoastController_1 = class RoastController {
         this.logger = new common_1.Logger(RoastController_1.name);
     }
     async createRoast(createRoastDto) {
-        this.logger.log(`Received roast request for: ${createRoastDto.username}`);
-        const result = await this.roastService.generateRoast(createRoastDto.username, createRoastDto.temperature, createRoastDto.customInstructions);
+        this.logger.log(`POST roast request for: ${createRoastDto.username} with temperature: ${createRoastDto.temperature}`);
+        const result = await this.roastService.generateRoast(createRoastDto.username, createRoastDto.temperature);
         this.logger.log(`Successfully generated roast for: ${createRoastDto.username}`);
         return result;
     }
-    async getRoast(username, temperature = 0.7, customInstructions) {
-        this.logger.log(`GET roast request for: ${username}`);
-        return this.roastService.generateRoast(username, temperature, customInstructions);
+    async getRoast(username, temperature = 0.7) {
+        this.logger.log(`GET roast request for: ${username} with temperature: ${temperature}`);
+        return this.roastService.generateRoast(username, temperature);
     }
 };
 exports.RoastController = RoastController;
@@ -46,9 +46,8 @@ __decorate([
     (0, common_1.Get)(':username'),
     __param(0, (0, common_1.Param)('username')),
     __param(1, (0, common_1.Query)('temperature')),
-    __param(2, (0, common_1.Query)('customInstructions')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, Number, String]),
+    __metadata("design:paramtypes", [String, Number]),
     __metadata("design:returntype", Promise)
 ], RoastController.prototype, "getRoast", null);
 exports.RoastController = RoastController = RoastController_1 = __decorate([

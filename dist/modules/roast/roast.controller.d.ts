@@ -5,5 +5,5 @@ export declare class RoastController {
     private readonly logger;
     constructor(roastService: RoastService);
     createRoast(createRoastDto: CreateRoastDto): Promise<any>;
-    getRoast(username: string, temperature?: number, customInstructions?: string): Promise<any>;
+    getRoast(username: string, temperature?: number): Promise<any>;
 }
