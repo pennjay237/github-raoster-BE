@@ -1,21 +1,19 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
-import * as dotenv from 'dotenv';
-
-dotenv.config();
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  const allowedOrigins = [
-    'http://localhost:3000', 
-    'https://github-roaster-murex.vercel.app', 
-  ];
-
   app.enableCors({
-    origin: allowedOrigins,
-    credentials: true,
+    origin: [
+      'http://localhost:3000',
+      'https://github-roaster-murex.vercel.app',
+      'https://github-roaster-gamma.vercel.app',
+    ],
+    methods: ['GET', 'POST', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: false,
   });
 
   app.useGlobalPipes(
@@ -26,8 +24,9 @@ async function bootstrap() {
   );
 
   const port = process.env.PORT || 3001;
-  await app.listen(port);
-  console.log(`🚀 Backend server running on http://localhost:${port}`);
+  await app.listen(port, '0.0.0.0');
+
+  console.log(`🚀 Backend server running on port ${port}`);
 }
 
 bootstrap();
