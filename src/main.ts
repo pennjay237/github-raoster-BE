@@ -8,7 +8,8 @@ async function bootstrap() {
   app.enableCors({
     origin: [
       'http://localhost:3000',
-      'https://github-roaster-murex.vercel.app',
+      'https://github-roaster-mu.vercel.app', 
+      'https://github-roaster-murex.vercel.app', 
       'https://github-roaster-gamma.vercel.app',
     ],
     methods: ['GET', 'POST', 'OPTIONS'],
