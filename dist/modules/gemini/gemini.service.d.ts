@@ -6,7 +6,5 @@ export declare class GeminiService {
     private readonly baseUrl;
     private readonly model;
     constructor(configService: ConfigService);
-    generateRoast(prompt: string): Promise<string>;
-    private tryFallbackModels;
-    private getRandomMockRoast;
+    generateRoast(prompt: string, temperature?: number): Promise<string>;
 }
