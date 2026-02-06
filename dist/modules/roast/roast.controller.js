@@ -28,9 +28,11 @@ let RoastController = RoastController_1 = class RoastController {
         this.logger.log(`Successfully generated roast for: ${createRoastDto.username}`);
         return result;
     }
-    async getRoast(username, temperature = 0.7) {
-        this.logger.log(`GET roast request for: ${username} with temperature: ${temperature}`);
-        return this.roastService.generateRoast(username, temperature);
+    async getRoast(username, temperature) {
+        const temp = temperature ? parseFloat(temperature) : 0.7;
+        const validTemp = isNaN(temp) ? 0.7 : Math.max(0.1, Math.min(2.0, temp));
+        this.logger.log(`GET roast request for: ${username} with temperature: ${validTemp}`);
+        return this.roastService.generateRoast(username, validTemp);
     }
 };
 exports.RoastController = RoastController;
@@ -47,7 +49,7 @@ __decorate([
     __param(0, (0, common_1.Param)('username')),
     __param(1, (0, common_1.Query)('temperature')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, Number]),
+    __metadata("design:paramtypes", [String, String]),
     __metadata("design:returntype", Promise)
 ], RoastController.prototype, "getRoast", null);
 exports.RoastController = RoastController = RoastController_1 = __decorate([

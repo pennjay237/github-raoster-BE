@@ -8,6 +8,7 @@ import {
   HttpCode, 
   HttpStatus,
   Logger,
+  ParseFloatPipe,
 } from '@nestjs/common';
 import { RoastService } from './roast.service';
 import { CreateRoastDto } from '../../dto/create-roast.dto';
@@ -35,13 +36,16 @@ export class RoastController {
   @Get(':username')
   async getRoast(
     @Param('username') username: string,
-    @Query('temperature') temperature: number = 0.7,
+    @Query('temperature') temperature?: string,  
   ) {
-    this.logger.log(`GET roast request for: ${username} with temperature: ${temperature}`);
+    const temp = temperature ? parseFloat(temperature) : 0.7;
+    const validTemp = isNaN(temp) ? 0.7 : Math.max(0.1, Math.min(2.0, temp));
+    
+    this.logger.log(`GET roast request for: ${username} with temperature: ${validTemp}`);
     
     return this.roastService.generateRoast(
       username,
-      temperature,
+      validTemp,  
     );
   }
 }
