@@ -7,7 +7,7 @@ async function bootstrap() {
 
   const allowedOrigins = process.env.FRONTEND_URL 
     ? process.env.FRONTEND_URL.split(',').map(url => url.trim())
-    : ['http://localhost:3000','https://github-roaster-fe-y3he.vercel.app'];
+    : ['http://localhost:3000', 'https://github-roaster-fe-y3he.vercel.app'];
 
   app.enableCors({
     origin: (origin, callback) => {
@@ -22,13 +22,21 @@ async function bootstrap() {
       })) {
         callback(null, true);
       } else {
-        console.log(` CORS blocked origin: ${origin}`);
+        console.log(`❌ CORS blocked origin: ${origin}`);
         callback(new Error('Not allowed by CORS'));
       }
     },
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+    allowedHeaders: [
+      'Content-Type', 
+      'Authorization', 
+      'Accept',
+      'x-user-api-key',  
+    ],
+    exposedHeaders: ['x-user-api-key'],  
     credentials: true,
+    preflightContinue: false,  
+    optionsSuccessStatus: 204,  
   });
 
   app.useGlobalPipes(
@@ -36,6 +44,9 @@ async function bootstrap() {
       whitelist: true,
       forbidNonWhitelisted: true,
       transform: true,
+      transformOptions: {
+        enableImplicitConversion: true,  
+      },
     }),
   );
 
