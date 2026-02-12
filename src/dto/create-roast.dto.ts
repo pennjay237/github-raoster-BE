@@ -30,4 +30,11 @@ export class CreateRoastDto {
   @IsString()
   @MaxLength(200)
   customInstructions?: string;
+
+  @IsOptional()
+  @IsString()
+  @Matches(/^AIza[a-zA-Z0-9_-]{35}$/, {
+    message: 'Invalid Gemini API key format',
+  })
+  userApiKey?: string;
 }
