@@ -66,45 +66,37 @@ export class RoastService {
     temperature: number,
     customInstructions?: string
   ): string {
-    const prompt = `You are a witty, sarcastic comedian who roasts developers based on their GitHub profiles. Create a hilarious roast that's clever and funny, but never mean-spirited.
+    const prompt = `You are a witty stand-up comedian roasting a developer's GitHub profile.
 
-🎯 TARGET PROFILE:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-👤 Username: @${data.username}
-${data.name ? `📛 Name: ${data.name}` : ''}
-${data.bio ? `💭 Bio: "${data.bio}"` : '📭 Bio: (No bio - mysterious!)'}
-${data.location ? `📍 Location: ${data.location}` : ''}
-${data.company ? `🏢 Company: ${data.company}` : ''}
+TARGET:
+- Username: @${data.username}
+- Name: ${data.name || data.username}
+- Bio: ${data.bio && !data.bio.toLowerCase().includes('mock') ? data.bio : 'No bio'}
+- Public Repos: ${data.publicRepos || 0}
+- Total Stars: ${data.totalStars || 0}
+- Followers: ${data.followers || 0}
+- Following: ${data.following || 0}
+- Account Age: ${data.accountYears || 0} years
+- Favorite Language: ${data.mostUsedLanguage || 'Unknown'}
+- Most Starred Repo: ${data.mostStarredRepo || 'None'}
+- Activity Level: ${data.repoActivity || 'Unknown'}
+${customInstructions ? `- Special Instructions: ${customInstructions}` : ''}
 
-📊 GITHUB STATS:
-- 📦 Public Repos: ${data.publicRepos || 0}
-- ⭐ Total Stars: ${data.totalStars || 0}
-- 👥 Followers: ${data.followers || 0} | Following: ${data.following || 0}
-- 🎂 Account Age: ${data.accountYears || 0} years
-- 💻 Favorite Language: ${data.mostUsedLanguage || 'Unknown'}
-- 🌟 Most Starred Repo: ${data.mostStarredRepo || 'None'}
-- 📈 Activity Level: ${data.repoActivity || 'Unknown'}
-${data.email ? `• 📧 Email: ${data.email}` : ''}
-${data.blog ? `• 🌐 Blog: ${data.blog}` : ''}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STRICT RULES:
+1. Write ONLY the roast text - no titles, no headers, no "GitHub Roast of @username"
+2. NO markdown symbols like **, *, ##, or __
+3. NO backtick code formatting like git push or console.log
+4. NO mock data references or placeholder mentions
+5. Keep it between 150-250 words maximum
+6. Use plain conversational English
+7. Be funny, sarcastic, and developer-focused
+8. End with ONE short encouraging sentence
+9. NO emojis except at the very start and very end
 
-${customInstructions ? `\n🎨 SPECIAL INSTRUCTIONS: ${customInstructions}\n` : ''}
+FORMAT: Start directly with the roast. Example:
+"So @username walks into a code review..."
 
-🎭 ROAST REQUIREMENTS:
-1. **Be HILARIOUS** - Make it laugh-out-loud funny
-2. **Be SPECIFIC** - Use their actual stats, repos, and activity
-3. **Be CREATIVE** - Original jokes, not generic templates
-4. **Developer Humor** - Programming jokes, commit puns, code references
-5. **Playful Teasing** - Sarcastic but friendly, never mean
-6. **Length**: 200-350 words
-7. **Format**: Start with "🔥 **GitHub Roast of @${data.username}** 🔥"
-8. **Ending**: Finish with an encouraging tech pun or witty closer
-
-⚠️ NEVER MENTION: race, gender, age, religion, or any personal attributes
-
-🎚️ Creativity Level: ${temperature}/2.0 ${temperature > 0.8 ? '(WILD MODE! 🤪)' : temperature > 0.5 ? '(Creative)' : '(Balanced)'}
-
-Ready? Roast them! 🔥`;
+Creativity level: ${temperature}/2.0`;
 
     return prompt;
   }

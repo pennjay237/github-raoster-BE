@@ -7,36 +7,48 @@ async function bootstrap() {
 
   const allowedOrigins = process.env.FRONTEND_URL 
     ? process.env.FRONTEND_URL.split(',').map(url => url.trim())
-    : ['http://localhost:3000', 'https://github-roaster-fe-y3he.vercel.app'];
+    : ['http://localhost:3000'];
+
+  console.log('🔧 Allowed CORS origins:', allowedOrigins);
 
   app.enableCors({
     origin: (origin, callback) => {
-      if (!origin) return callback(null, true);
+      if (!origin) {
+        console.log('✅ Allowing request with no origin');
+        return callback(null, true);
+      }
       
-      if (allowedOrigins.some(allowed => {
+      const isAllowed = allowedOrigins.some(allowed => {
         if (allowed.includes('*')) {
-          const pattern = allowed.replace(/\*/g, '.*');
-          return new RegExp(`^${pattern}$`).test(origin);
+          const pattern = allowed.replace(/\*/g, '.*').replace(/\./g, '\\.');
+          const regex = new RegExp(`^${pattern}$`);
+          return regex.test(origin);
         }
         return allowed === origin;
-      })) {
+      });
+
+      if (isAllowed) {
+        console.log(`✅ CORS allowed for origin: ${origin}`);
         callback(null, true);
       } else {
         console.log(`❌ CORS blocked origin: ${origin}`);
+        console.log(`📋 Allowed origins are: ${allowedOrigins.join(', ')}`);
         callback(new Error('Not allowed by CORS'));
       }
     },
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: [
-      'Content-Type', 
-      'Authorization', 
+      'Content-Type',
+      'Authorization',
       'Accept',
       'x-user-api-key',  
+      'Origin',
+      'X-Requested-With',
     ],
-    exposedHeaders: ['x-user-api-key'],  
+    exposedHeaders: ['x-user-api-key'],
     credentials: true,
-    preflightContinue: false,  
-    optionsSuccessStatus: 204,  
+    preflightContinue: false,
+    optionsSuccessStatus: 204,
   });
 
   app.useGlobalPipes(
@@ -45,7 +57,7 @@ async function bootstrap() {
       forbidNonWhitelisted: true,
       transform: true,
       transformOptions: {
-        enableImplicitConversion: true,  
+        enableImplicitConversion: true,
       },
     }),
   );
